@@ -1,4 +1,4 @@
-# waitforit
+# waitforit [ ![Download](https://api.bintray.com/packages/kung-foo/generic/waitforit/images/download.svg) ](https://bintray.com/kung-foo/generic/waitforit/_latestVersion)
 
 **waitforit** is a command line utility and library for delaying a script until a requisite service is available.
 
