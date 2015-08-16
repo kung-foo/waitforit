@@ -45,3 +45,8 @@ URI Examples:
     mysql://scott:tiger@127.0.0.1/ghost
     postgres://ghost:tiger@127.0.0.1/ghost
 ```
+
+Downloads
+---------
+
+See https://github.com/kung-foo/waitforit/releases
