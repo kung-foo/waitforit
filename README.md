@@ -1,4 +1,4 @@
-# waitforit [ ![Download](https://api.bintray.com/packages/kung-foo/generic/waitforit/images/download.svg) ](https://bintray.com/kung-foo/generic/waitforit/_latestVersion)
+# waitforit
 
 **waitforit** is a command line utility and library for delaying a script until a requisite service is available.
 
@@ -45,3 +45,8 @@ URI Examples:
     mysql://scott:tiger@127.0.0.1/ghost
     postgres://ghost:tiger@127.0.0.1/ghost
 ```
+
+Downloads
+---------
+
+See https://github.com/kung-foo/waitforit/releases
