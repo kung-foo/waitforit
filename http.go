@@ -11,12 +11,12 @@ var _ = log.Print
 
 const maxRedirects = 5
 
-type HTTPWaiter struct {
+type httpWaiter struct {
 	target *Target
 	res    *goreq.Response
 }
 
-func (w *HTTPWaiter) Connect() (err error) {
+func (w *httpWaiter) connect() (err error) {
 	goreq.SetConnectTimeout(w.target.Timeout)
 
 	req := goreq.Request{
@@ -56,12 +56,12 @@ func (w *HTTPWaiter) Connect() (err error) {
 	return nil
 }
 
-func (w *HTTPWaiter) RunTest() error {
+func (w *httpWaiter) runTest() error {
 	// nothing implemented yet
 	return nil
 }
 
-func (w *HTTPWaiter) Cancel() error {
+func (w *httpWaiter) cancel() error {
 	if w.res != nil {
 		w.res.CancelRequest()
 	}

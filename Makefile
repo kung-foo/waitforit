@@ -1,6 +1,7 @@
 VERSION := v0.0.1
 BUILDSTRING := $(shell git log --pretty=format:'%h' -n 1)
 VERSIONSTRING := waitforit version $(VERSION)+$(BUILDSTRING)
+RUNNTIMEOPTIONS := CGO_ENABLED=0
 
 ifndef GOARCH
 	GOARCH := $(shell go env GOARCH)
@@ -16,7 +17,7 @@ ifeq ($(GOOS), windows)
 	OUTPUT := $(OUTPUT).exe
 endif
 
-.PHONY: default build clean update-godeps test
+.PHONY: default build clean update-godeps test goconvey
 
 default: build
 
@@ -24,7 +25,7 @@ build: $(OUTPUT)
 
 $(OUTPUT): app/main.go waitforit.go redis.go rdbms.go
 	mkdir -p dist/$(GOARCH)/$(GOOS)
-	CGO_ENABLED=0 godep go build -v -o $(OUTPUT) -ldflags "-X main.VERSION \"$(VERSIONSTRING)\"" app/main.go
+	$(RUNNTIMEOPTIONS) godep go build -v -o $(OUTPUT) -ldflags "-X main.VERSION \"$(VERSIONSTRING)\"" app/main.go
 
 clean:
 	rm -rf dist
@@ -35,3 +36,6 @@ update-godeps:
 
 test:
 	godep go test -cover -v ./...
+
+goconvey:
+	$(RUNNTIMEOPTIONS) goconvey

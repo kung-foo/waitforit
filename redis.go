@@ -14,12 +14,12 @@ var (
 	reRedisPath = regexp.MustCompile(`^/(\d{1,2})$`)
 )
 
-type RedisWaiter struct {
+type redisWaiter struct {
 	target *Target
 	db     *redis.Client
 }
 
-func (w *RedisWaiter) Connect() (err error) {
+func (w *redisWaiter) connect() (err error) {
 	port := w.target.port
 	if port == 0 {
 		port = 6379
@@ -57,7 +57,7 @@ func (w *RedisWaiter) Connect() (err error) {
 	return
 }
 
-func (w *RedisWaiter) RunTest() error {
+func (w *redisWaiter) runTest() error {
 	dbNum := "0"
 
 	if w.target.Exists != "" {
@@ -83,7 +83,7 @@ func (w *RedisWaiter) RunTest() error {
 	return nil
 }
 
-func (w *RedisWaiter) Cancel() error {
+func (w *redisWaiter) cancel() error {
 	if w.db != nil {
 		return w.db.Close()
 	}

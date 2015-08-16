@@ -14,27 +14,27 @@ import (
 
 var _ = log.Print
 
-type DbWaiter struct {
+type dbWaiter struct {
 	target *Target
 	db     *sql.DB
 	driver string
 }
 
-func NewPostgresWaiter(target *Target) *DbWaiter {
-	return &DbWaiter{
+func newPostgresWaiter(target *Target) *dbWaiter {
+	return &dbWaiter{
 		target: target,
 		driver: "postgres",
 	}
 }
 
-func NewMySQLWaiter(target *Target) *DbWaiter {
-	return &DbWaiter{
+func newMySQLWaiter(target *Target) *dbWaiter {
+	return &dbWaiter{
 		target: target,
 		driver: "mysql",
 	}
 }
 
-func (w *DbWaiter) Connect() (err error) {
+func (w *dbWaiter) connect() (err error) {
 	u := w.target.url
 	values := u.Query()
 
@@ -65,7 +65,7 @@ func (w *DbWaiter) Connect() (err error) {
 	return w.db.Ping()
 }
 
-func (w *DbWaiter) RunTest() (err error) {
+func (w *dbWaiter) runTest() (err error) {
 	if w.target.Exists != "" {
 		var ok string
 		q := `select exists (select 1 from %s limit 1)`
@@ -77,7 +77,7 @@ func (w *DbWaiter) RunTest() (err error) {
 	return
 }
 
-func (w *DbWaiter) Cancel() (err error) {
+func (w *dbWaiter) cancel() (err error) {
 	if w.db != nil {
 		return w.db.Close()
 	}

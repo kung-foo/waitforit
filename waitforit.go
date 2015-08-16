@@ -12,12 +12,21 @@ import (
 )
 
 var (
-	ErrMalformedURI  = errors.New("Malformed URI")
+	// ErrMalformedURI is returned when the URI is malformed
+	ErrMalformedURI = errors.New("Malformed URI")
+
+	// ErrInvalidScheme is returned when the URI scheme is invalid
 	ErrInvalidScheme = errors.New("Invalid URI scheme")
-	ErrMaxRetries    = errors.New("Maximum retries reached")
-	ErrTimeout       = errors.New("Timeout")
+
+	// ErrMaxRetries is returned when the maximun number of retries has been
+	// reached without success
+	ErrMaxRetries = errors.New("Maximum retries reached")
+
+	// ErrTimeout is returned when the waitable request timesout
+	ErrTimeout = errors.New("Timeout")
 )
 
+// A Target represents a waitable endpoint
 type Target struct {
 	Timeout    time.Duration
 	Retries    int
@@ -30,30 +39,31 @@ type Target struct {
 	url        *url.URL
 	host       string
 	port       int
-	waiter     Waitable
+	waiter     waitable
 }
 
-type Waitable interface {
-	Connect() error
-	RunTest() error
-	Cancel() error
+type waitable interface {
+	connect() error
+	runTest() error
+	cancel() error
 }
 
-func (t *Target) Elapsed() time.Duration {
-	if t.elapsed == 0 {
-		return time.Now().Sub(t.start)
+func (t *Target) init() (err error) {
+	if t.URI == "" {
+		return ErrMalformedURI
 	}
-	return t.elapsed
-}
-
-func (t *Target) Wait() (err error) {
-	defer func() {
-		t.elapsed = time.Now().Sub(t.start)
-	}()
-
-	t.start = time.Now()
 
 	t.url, err = url.Parse(t.URI)
+	if err != nil {
+		return
+	}
+
+	t.host, t.port, err = parseHostAndPort(t.url)
+	if err != nil {
+		return
+	}
+
+	t.waiter, err = makeWaitable(t.url.Scheme, t)
 	if err != nil {
 		return
 	}
@@ -62,45 +72,38 @@ func (t *Target) Wait() (err error) {
 		t.Retries = math.MaxInt32
 	}
 
-	switch t.url.Scheme {
-	case "http", "https":
-		t.waiter = &HTTPWaiter{target: t}
-	case "redis":
-		t.waiter = &RedisWaiter{target: t}
-	case "mysql":
-		t.waiter = NewMySQLWaiter(t)
-	case "postgres":
-		t.waiter = NewPostgresWaiter(t)
-	default:
-		return ErrInvalidScheme
-	}
+	return
+}
 
-	tokens := strings.Split(t.url.Host, ":")
-	switch len(tokens) {
-	case 1:
-		t.host = tokens[0]
-	case 2:
-		t.host = tokens[0]
-		t.port, err = strconv.Atoi(tokens[1])
-		if err != nil {
-			return
-		}
-	default:
-		// IPv6?
-		return ErrMalformedURI
+// Elapsed returns the amount of time since Wait was called
+func (t *Target) Elapsed() time.Duration {
+	return t.elapsed
+}
+
+// Wait begins the blocking request to the endpoint
+func (t *Target) Wait() (err error) {
+	t.start = time.Now()
+
+	defer func() {
+		t.elapsed = time.Now().Sub(t.start)
+	}()
+
+	err = t.init()
+	if err != nil {
+		return
 	}
 
 	errCh := make(chan error)
 	successCh := make(chan bool)
 
 	run := func() {
-		err = t.waiter.Connect()
+		err = t.waiter.connect()
 		if err != nil {
 			errCh <- err
 			return
 		}
 
-		err = t.waiter.RunTest()
+		err = t.waiter.runTest()
 		if err != nil {
 			errCh <- err
 			return
@@ -115,7 +118,7 @@ func (t *Target) Wait() (err error) {
 		select {
 		case err = <-errCh:
 			log.Warn(err)
-			cerr := t.waiter.Cancel()
+			cerr := t.waiter.cancel()
 			if cerr != nil {
 				log.Fatal(cerr)
 			}
@@ -123,7 +126,7 @@ func (t *Target) Wait() (err error) {
 		case <-successCh:
 			return nil
 		case <-time.After(t.Timeout):
-			cerr := t.waiter.Cancel()
+			cerr := t.waiter.cancel()
 			if cerr != nil {
 				log.Fatal(cerr)
 			} else {
@@ -140,4 +143,38 @@ func (t *Target) Wait() (err error) {
 
 		time.Sleep(t.RetryDelay - time.Now().Sub(start))
 	}
+}
+
+func parseHostAndPort(url *url.URL) (host string, port int, err error) {
+	tokens := strings.Split(url.Host, ":")
+	switch len(tokens) {
+	case 1:
+		host = tokens[0]
+	case 2:
+		host = tokens[0]
+		if len(tokens[1]) > 0 {
+			port, err = strconv.Atoi(tokens[1])
+		}
+	default:
+		// IPv6?
+		err = ErrMalformedURI
+	}
+	return
+}
+
+func makeWaitable(scheme string, t *Target) (w waitable, err error) {
+	switch t.url.Scheme {
+	case "http", "https":
+		w = &httpWaiter{target: t}
+	case "redis":
+		w = &redisWaiter{target: t}
+	case "mysql":
+		w = newMySQLWaiter(t)
+	case "postgres":
+		w = newPostgresWaiter(t)
+	default:
+		return nil, ErrInvalidScheme
+	}
+
+	return
 }
